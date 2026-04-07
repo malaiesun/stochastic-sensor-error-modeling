@@ -4,18 +4,31 @@ import { useState } from "react";
 import { motion, AnimatePresence, easeOut, easeIn } from "framer-motion";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, LineChart, Waves, Cpu, ChevronRight, ArrowLeft, Target, ShieldAlert, Rocket, Info } from "lucide-react";
+import { Activity, LineChart, Waves, Cpu, ChevronRight, ArrowLeft, Target, ShieldAlert, Rocket, Info, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import AdaptiveFilterSim from "@/components/simulations/AdaptiveFilterSim";
+import { BrainCircuit } from "lucide-react"; // Grab the icon too
 
+import DistributionSim from "@/components/simulations/DistributionSim";
 import SingleSensorSim from "@/components/simulations/SingleSensorSim";
 import SensorFusionSim from "@/components/simulations/SensorFusionSim";
 import CSVFilterSim from "@/components/simulations/CSVFilterSim";
 import SensorDriftSim from "@/components/simulations/SensorDriftSim";
+import SignalAnalysisSim from "@/components/simulations/SignalAnalysisSim";
+import { ActivitySquare } from "lucide-react";
 
-// ==========================================
-// EXPANDED THEORY CONTENT (ACADEMIC GRADE)
-// ==========================================
 const theoryContent = {
+  distribution: { 
+    title: "Statistical Distributions", 
+    subtitle: "Uniform vs. Gaussian (Box-Muller)",
+    color: "amber",
+    icon: BarChart3,
+    sections: [
+      { heading: "The Problem", text: "Computers natively generate uniform randomness (all values equally likely), but physical sensor noise typically follows a normal (Gaussian) distribution where extreme errors are rare." },
+      { heading: "Mathematical Approach", text: "The Box-Muller transform is a pseudo-random number sampling method. It takes two independent, uniformly distributed random numbers and maps them onto a mathematically perfect Gaussian distribution." },
+      { heading: "Expected Outcomes", text: "Toggle between Uniform and Gaussian. As you increase the sample size (Law of Large Numbers), watch the raw data coalesce into a flat rectangular block vs. a perfect mathematical Bell Curve." }
+    ]
+  },
   single: { 
     title: "Additive White Gaussian Noise (AWGN)", 
     subtitle: "The Fundamental Stochastic Model",
@@ -23,7 +36,7 @@ const theoryContent = {
     icon: LineChart,
     sections: [
       { heading: "The Problem", text: "Physical sensors are subject to high-frequency jitter caused by thermal interference and electronic fluctuations. AWGN assumes this noise has uniform power across all frequencies (White) and follows a normal distribution (Gaussian)." },
-      { heading: "Mathematical Approach", text: "Standard computational generators only output uniform noise (0 to 1). We implement the Box-Muller transform from scratch to computationally stretch uniform randomness into a true Normal/Gaussian Probability Density Function." },
+      { heading: "Mathematical Approach", text: "Using the Box-Muller transform from the previous step, we apply this Gaussian noise to a flat 'True Signal' over a discrete time series to simulate real-time sensor corruption." },
       { heading: "Expected Outcomes", text: "As you increase the Standard Deviation (σ), the timeline becomes visibly jagged, but the underlying histogram will perfectly map to a theoretical Bell Curve, proving the integrity of the math engine." }
     ]
   },
@@ -49,6 +62,17 @@ const theoryContent = {
       { heading: "Expected Outcomes", text: "Upload a CSV. By tuning the R slider (Sensor Distrust), you dictate how aggressively the math smooths the data. Tuning the Q slider dictates how fast the filter tracks sudden, legitimate spikes in the true signal." }
     ]
   },
+  lms: { 
+    title: "Adaptive Filter (LMS Algorithm)", 
+    subtitle: "Machine Learning in Digital Signal Processing",
+    color: "cyan",
+    icon: BrainCircuit,
+    sections: [
+      { heading: "The Problem", text: "Static filters (like Low-Pass or Kalman) require pre-tuned parameters. If the environmental noise profile suddenly changes in frequency or amplitude, static filters fail." },
+      { heading: "Mathematical Approach", text: "We implemented the Least Mean Squares (LMS) stochastic gradient descent algorithm. It calculates the error between its prediction and the desired signal, actively updating its own weights to converge on the truth." },
+      { heading: "Expected Outcomes", text: "At t=0, the filter knows nothing (flat line). Watch as the cyan line 'learns' to extract the sine wave from the red noise over time. If you push the Learning Rate (μ) too high, the math will explode into chaos." }
+    ]
+  },
   drift: { 
     title: "Brownian Motion & Random Walk", 
     subtitle: "Cumulative Stochastic Integration Errors",
@@ -59,7 +83,18 @@ const theoryContent = {
       { heading: "Mathematical Approach", text: "We mathematically model Brownian Motion by executing a Discrete Random Walk. Instead of resetting the noise to zero, each stochastic Gaussian step is cumulatively added to the previous one." },
       { heading: "Expected Outcomes", text: "Turn White Noise to zero and Drift severity up. You will see the sensor slowly 'wander' infinitely away from the true signal. This proves why IMUs must be fused with absolute sensors (like GPS or Magnetometers) in the real world." }
     ]
-  }
+  },
+  analysis: { 
+    title: "DSP Signal Analysis", 
+    subtitle: "Pre/Post Filtering & Autocorrelation",
+    color: "emerald",
+    icon: ActivitySquare,
+    sections: [
+      { heading: "The Problem", text: "Visually looking at a filtered signal isn't enough for engineering. We must mathematically quantify the quality of the signal and mathematically identify the exact type of noise corrupting it." },
+      { heading: "Mathematical Approach", text: "We compute the Signal-to-Noise Ratio (SNR) in Decibels (dB) before and after filtering. We also compute the Discrete Autocorrelation function to test the statistical independence of the noise samples." },
+      { heading: "Expected Outcomes", text: "The system dynamically calculates the +dB improvement of your filter. The Autocorrelation graph will show a massive spike at Lag 0 and drop instantly to near-zero, definitively proving the noise is AWGN (White Noise)." }
+    ]
+  },
 };
 type TabKey = keyof typeof theoryContent;
 
@@ -134,26 +169,33 @@ function LandingView({ onLaunch }: { onLaunch: () => void }) {
               In physical engineering, data is never perfect. Thermal interference, electronic jitter, and mechanical vibrations corrupt all sensor readings. This dashboard mathematically synthesizes these stochastic processes and deploys advanced state-estimation algorithms to recover the underlying truth.
             </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card className="bg-neutral-900/60 border-neutral-800 backdrop-blur-xl">
-              <CardHeader><CardTitle className="text-2xl text-blue-400 flex flex-col gap-4"><Target className="w-10 h-10" /> 1. AWGN Modeling</CardTitle></CardHeader>
-              <CardContent className="text-neutral-400 space-y-4">
-                <p><strong>Additive White Gaussian Noise</strong> is the fundamental building block of signal corruption. It assumes noise is normally distributed with a mean of zero.</p>
-                <p className="text-sm border-l-2 border-blue-500/50 pl-3"><em>Dashboard Feature:</em> We use the Box-Muller transform to generate true Gaussian distribution dynamically.</p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+            <Card className="lg:col-span-2 bg-neutral-900/60 border-neutral-800 backdrop-blur-xl">
+              <CardHeader><CardTitle className="text-xl text-amber-400 flex flex-col gap-3"><BarChart3 className="w-8 h-8" /> 1. Distribution Math</CardTitle></CardHeader>
+              <CardContent className="text-neutral-400 text-sm space-y-2">
+                <p>Visualize the foundational difference between machine randomness (Uniform) and natural physics (Gaussian) using the Box-Muller transform.</p>
               </CardContent>
             </Card>
-            <Card className="bg-neutral-900/60 border-neutral-800 backdrop-blur-xl">
-              <CardHeader><CardTitle className="text-2xl text-emerald-400 flex flex-col gap-4"><ShieldAlert className="w-10 h-10" /> 2. Kalman Filtering</CardTitle></CardHeader>
-              <CardContent className="text-neutral-400 space-y-4">
-                <p>The <strong>Kalman Filter</strong> is an optimal estimator. It continuously predicts the next state and updates its prediction based on the variance of incoming measurements.</p>
-                <p className="text-sm border-l-2 border-emerald-500/50 pl-3"><em>Dashboard Feature:</em> Upload real CSV data and tune the Process (Q) and Measurement (R) noise parameters in real-time.</p>
+
+            <Card className="lg:col-span-3 bg-neutral-900/60 border-neutral-800 backdrop-blur-xl">
+              <CardHeader><CardTitle className="text-xl text-blue-400 flex flex-col gap-3"><Target className="w-8 h-8" /> 2. AWGN Modeling</CardTitle></CardHeader>
+              <CardContent className="text-neutral-400 text-sm space-y-2">
+                <p><strong>Additive White Gaussian Noise</strong> is the fundamental building block of signal corruption. It assumes noise is normally distributed with a mean of zero over a time series.</p>
               </CardContent>
             </Card>
-            <Card className="bg-neutral-900/60 border-neutral-800 backdrop-blur-xl">
-              <CardHeader><CardTitle className="text-2xl text-rose-400 flex flex-col gap-4"><Rocket className="w-10 h-10" /> 3. Brownian Drift</CardTitle></CardHeader>
-              <CardContent className="text-neutral-400 space-y-4">
-                <p>Also known as a <strong>Random Walk</strong>, this occurs when small integration errors accumulate over time, causing a sensor's baseline to drift infinitely away from reality.</p>
-                <p className="text-sm border-l-2 border-rose-500/50 pl-3"><em>Dashboard Feature:</em> Watch simulated IMU data succumb to cumulative low-frequency drift over a specified time horizon.</p>
+
+            <Card className="lg:col-span-2 bg-neutral-900/60 border-neutral-800 backdrop-blur-xl">
+              <CardHeader><CardTitle className="text-xl text-emerald-400 flex flex-col gap-3"><ShieldAlert className="w-8 h-8" /> 3. Kalman Filtering</CardTitle></CardHeader>
+              <CardContent className="text-neutral-400 text-sm space-y-2">
+                <p>The <strong>Kalman Filter</strong> continuously predicts the next state and updates its prediction based on the variance of incoming measurements. Upload real CSV data to test it.</p>
+              </CardContent>
+            </Card>
+
+            <Card className="lg:col-span-3 bg-neutral-900/60 border-neutral-800 backdrop-blur-xl">
+              <CardHeader><CardTitle className="text-xl text-rose-400 flex flex-col gap-3"><Rocket className="w-8 h-8" /> 4. Brownian Drift</CardTitle></CardHeader>
+              <CardContent className="text-neutral-400 text-sm space-y-2">
+                <p>A <strong>Random Walk</strong> occurs when small integration errors accumulate over time, causing a sensor's baseline to drift infinitely away from reality. Vital for IMU analysis.</p>
               </CardContent>
             </Card>
           </div>
@@ -167,7 +209,8 @@ function LandingView({ onLaunch }: { onLaunch: () => void }) {
 // 2. DASHBOARD VIEW (WITH ANIMATED TABS)
 // ==========================================
 function DashboardView({ onBack }: { onBack: () => void }) {
-  const [activeTab, setActiveTab] = useState<TabKey>("single");
+  // Start on the new Distribution tab
+  const [activeTab, setActiveTab] = useState<TabKey>("distribution");
 
   // Get current active theory data
   const currentTheory = theoryContent[activeTab];
@@ -176,10 +219,13 @@ function DashboardView({ onBack }: { onBack: () => void }) {
   // Render the correct simulation based on state
   const renderSimulation = () => {
     switch (activeTab) {
+      case "distribution": return <DistributionSim />;
       case "single": return <SingleSensorSim />;
       case "fusion": return <SensorFusionSim />;
       case "csv": return <CSVFilterSim />;
       case "drift": return <SensorDriftSim />;
+      case "lms": return <AdaptiveFilterSim />;
+      case "analysis": return <SignalAnalysisSim />;
     }
   };
 
@@ -205,23 +251,23 @@ function DashboardView({ onBack }: { onBack: () => void }) {
           </Button>
         </header>
 
-        {/* Tab Navigation */}
+{/* Tab Navigation updated with 7 tabs */}
         <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as TabKey)} className="w-full">
           <TabsList className="bg-neutral-900 border border-neutral-800 flex flex-wrap h-auto">
-            <TabsTrigger value="single" className="data-[state=active]:bg-neutral-800 py-2 px-4">1. AWGN Noise</TabsTrigger>
-            <TabsTrigger value="fusion" className="data-[state=active]:bg-neutral-800 py-2 px-4">2. Sensor Fusion</TabsTrigger>
-            <TabsTrigger value="csv" className="data-[state=active]:bg-neutral-800 py-2 px-4">3. CSV Filter</TabsTrigger>
-            <TabsTrigger value="drift" className="data-[state=active]:bg-neutral-800 py-2 px-4">4. Brownian Drift</TabsTrigger>
+            <TabsTrigger value="distribution" className="data-[state=active]:bg-neutral-800 py-2 px-4">1. Distribution Math</TabsTrigger>
+            <TabsTrigger value="single" className="data-[state=active]:bg-neutral-800 py-2 px-4">2. AWGN Noise</TabsTrigger>
+            <TabsTrigger value="fusion" className="data-[state=active]:bg-neutral-800 py-2 px-4">3. Sensor Fusion</TabsTrigger>
+            <TabsTrigger value="csv" className="data-[state=active]:bg-neutral-800 py-2 px-4">4. CSV Filter</TabsTrigger>
+            <TabsTrigger value="drift" className="data-[state=active]:bg-neutral-800 py-2 px-4">5. Brownian Drift</TabsTrigger>
+            <TabsTrigger value="lms" className="data-[state=active]:bg-neutral-800 py-2 px-4">6. LMS Adaptive Filter</TabsTrigger>
+            <TabsTrigger value="analysis" className="data-[state=active]:bg-neutral-800 py-2 px-4">7. DSP Analysis</TabsTrigger>
           </TabsList>
         </Tabs>
 
-        {/* ANIMATE PRESENCE: 
-          This wraps the Theory Panel AND the Simulation. When 'activeTab' changes,
-          the old one blurs and slides out, and the new one blurs and slides in.
-        */}
+        {/* ANIMATE PRESENCE Wraps Theory Panel AND Simulation */}
         <AnimatePresence mode="wait">
           <motion.div
-            key={activeTab} // Crucial: Tells Framer Motion this is a new component
+            key={activeTab}
             variants={tabTransition}
             initial="hidden"
             animate="visible"
@@ -271,7 +317,7 @@ function DashboardView({ onBack }: { onBack: () => void }) {
 }
 
 // ==========================================
-// 3. MAIN APP CONTROLLER WITH ANIMATE-PRESENCE
+// 3. MAIN APP CONTROLLER
 // ==========================================
 export default function MainApp() {
   const [appMode, setAppMode] = useState<"landing" | "dashboard">("landing");
