@@ -9,10 +9,8 @@ export interface FusionDataPoint {
   fused: number;
 }
 
-/**
- * Simulates two noisy sensors observing the same true signal,
- * and fuses them using a variance-weighted average (Kalman logic).
- */
+// Simulates two noisy sensors observing the same true signal, and fuses them using a variance-weighted average (Kalman logic).
+
 export function generateSensorFusion(
   trueSignal: number,
   stdDevA: number,
@@ -75,7 +73,7 @@ export function fuseCustomData(
     
     results.push({
       time: i,
-      trueValue: 0, // We don't know the true value for real data!
+      trueValue: 0, // We don't know the true value for real data
       sensorA: Math.round(zA * 100) / 100,
       sensorB: Math.round(zB * 100) / 100,
       fused: Math.round(fused * 100) / 100,
@@ -85,9 +83,7 @@ export function fuseCustomData(
   return results;
 }
 
-/**
- * Helper to parse a basic CSV file into an array of numbers.
- */
+//CSV Parse
 export function parseFusionCSV(csvText: string): number[] {
   const lines = csvText.split(/\r?\n/);
   const values: number[] = [];

@@ -6,12 +6,6 @@ export interface FilteredDataPoint {
   filtered: number;
 }
 
-/**
- * A standard 1D Kalman Filter implemented from scratch.
- * * @param rawData Array of noisy numerical measurements
- * @param Q Process Variance (How fast you expect the actual true signal to change)
- * @param R Measurement Variance (How much you trust the sensor - higher = more noisy)
- */
 export function applyKalmanFilter(
   rawData: number[],
   Q: number = 1e-5, 
@@ -32,7 +26,7 @@ export function applyKalmanFilter(
     const x_pred = x_est;     // We assume the signal hasn't changed much
     const P_pred = P + Q;     // Uncertainty grows slightly over time
 
-    // 2. Update Step (The "Correction")
+    // 2. Update Step
     const K = P_pred / (P_pred + R); // Kalman Gain: How much should we trust the new measurement?
     
     x_est = x_pred + K * (measurement - x_pred); // The new filtered estimate
@@ -48,15 +42,12 @@ export function applyKalmanFilter(
   return results;
 }
 
-/**
- * Helper to parse a simple CSV string (assuming one value per line, or comma separated)
- */
+// CSV Patse
 export function parseCSV(csvText: string): number[] {
   const lines = csvText.split(/\r?\n/);
   const values: number[] = [];
   
   for (const line of lines) {
-    // If it's a multi-column CSV, just grab the first number we find for this simple 1D test
     const match = line.match(/-?\d+(\.\d+)?/);
     if (match) {
       values.push(parseFloat(match[0]));

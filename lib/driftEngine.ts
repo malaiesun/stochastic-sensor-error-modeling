@@ -1,10 +1,9 @@
 // src/lib/driftEngine.ts
 import { generateGaussian, SensorDataPoint } from "./stochasticEngine";
 
-/**
- * Simulates a sensor suffering from both High-Frequency White Noise 
- * AND Low-Frequency Random Walk (Drift).
- */
+
+//Simulates a sensor suffering from both High-Frequency White Noise AND Low-Frequency Random Walk (Drift).
+
 export function generateDriftSeries(
   trueSignal: number,
   whiteNoiseStdDev: number,

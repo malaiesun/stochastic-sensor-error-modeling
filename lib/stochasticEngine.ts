@@ -13,10 +13,8 @@ export interface ProcessStats {
   rmse: number;
 }
 
-/**
- * Generates a random number following a Normal (Gaussian) Distribution 
- * using the Box-Muller transform.
- */
+// Generates a random number following a Normal (Gaussian) Distribution using the Box-Muller transform.
+
 export function generateGaussian(mean: number, stdDev: number): number {
   let u1 = Math.random();
   let u2 = Math.random();
@@ -29,10 +27,7 @@ export function generateGaussian(mean: number, stdDev: number): number {
   return z0 * stdDev + mean;
 }
 
-/**
- * Simulates a stochastic measurement process over time.
- * Model: Y = X + Bias + Gaussian Noise
- */
+
 export function generateTimeSeries(
   trueSignal: number,
   bias: number,
@@ -57,9 +52,8 @@ export function generateTimeSeries(
   return data;
 }
 
-/**
- * Calculates statistical metrics for the generated dataset.
- */
+// Calculates statistical metrics for the generated dataset.
+
 export function calculateStats(data: SensorDataPoint[]): ProcessStats {
   if (data.length === 0) return { meanError: 0, variance: 0, rmse: 0 };
 

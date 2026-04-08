@@ -8,15 +8,6 @@ export interface LMSDataPoint {
   filteredSignal: number;
   error: number;
 }
-
-/**
- * Simulates an Adaptive Line Enhancer (ALE) using the Least Mean Squares (LMS) Algorithm.
- * The filter actively learns to extract a sine wave from heavy background noise.
- * * @param learningRate (mu) - How fast the filter adapts (too high = unstable)
- * @param noiseAmplitude - The severity of the AWGN
- * @param filterOrder - How many previous samples the filter remembers (its "brain size")
- * @param numSamples - Total time steps
- */
 export function runLMSSimulation(
   learningRate: number = 0.01,
   noiseAmplitude: number = 1.0,
@@ -32,7 +23,7 @@ export function runLMSSimulation(
 
   for (let t = 0; t < numSamples; t++) {
     // 1. Generate the physical environment
-    const trueSignal = Math.sin(t * 0.1) * 5; // A clean sine wave (e.g., AC voltage)
+    const trueSignal = Math.sin(t * 0.1) * 5; // A clean sine wave 
     const noise = generateGaussian(0, noiseAmplitude);
     const noisySignal = trueSignal + noise; // What the sensor actually reads
 

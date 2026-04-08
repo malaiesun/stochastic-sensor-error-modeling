@@ -1,7 +1,7 @@
 // src/lib/analysisEngine.ts
 import { generateGaussian } from "./stochasticEngine";
 
-// --- CORE MATHEMATICAL FUNCTIONS ---
+//MATHEMATICAL FUNCTIONS
 
 export function calculateSNR(signal: number[], noise: number[]): number {
   let signalPower = 0;
@@ -81,7 +81,7 @@ export function applyLowPassFilter(data: number[], windowSize: number = 5): numb
   return filtered;
 }
 
-// --- CSV PARSER & CUSTOM ENGINE ---
+//CSV PARSER
 
 export function parseAnalysisCSV(csvText: string): number[] {
   const lines = csvText.split(/\r?\n/);
@@ -117,10 +117,6 @@ export function runCustomAnalysis(rawData: number[], filterWindow: number) {
     });
   }
 
-  // --- SMART PROCESS IDENTIFICATION (FIXED) ---
-  // BUG FIX: We MUST analyze the 'rawData', not the 'estimatedNoise'!
-  // The LPF strips out low-frequency drift and memory. To identify the 
-  // true process of the CSV, we look at the raw input.
   const autocorr = calculateAutocorrelation(rawData, Math.min(30, Math.floor(rawData.length / 2)));
   const isWSSFlag = checkWSS(rawData);
   const momentsData = calculateMoments(rawData);
@@ -133,11 +129,11 @@ export function runCustomAnalysis(rawData: number[], filterWindow: number) {
     rawSNR: "Unknown",
     filteredSNR: Math.round(estimatedSNR * 100) / 100,
     improvement: "N/A",
-    autocorrelation: autocorr,   // Now reflects the raw data's memory
-    psd: calculatePSD(rawData),  // Now reflects the raw data's frequency spectrum
-    isWSS: isWSSFlag,            // Now reflects the raw data's drift
+    autocorrelation: autocorr,  
+    psd: calculatePSD(rawData), 
+    isWSS: isWSSFlag,            
     hypothesis: hypothesisDetected,
-    moments: momentsData         // Now holds the accurate process ID
+    moments: momentsData       
   };
 }
 
@@ -184,7 +180,7 @@ export function runSignalAnalysis(noiseLevel: number, filterWindow: number, isCo
     });
   }
 
-  // --- SMART PROCESS IDENTIFICATION (NEW) ---
+  //PROCESS IDENTIFICATION 
   const autocorr = calculateAutocorrelation(noiseOnly, 30);
   const isWSSFlag = checkWSS(noiseOnly);
   // Important: We analyze 'noiseOnly', NOT 'residualNoise'
@@ -205,7 +201,7 @@ export function runSignalAnalysis(noiseLevel: number, filterWindow: number, isCo
     moments: momentsData       // Use the updated moments data!
   };
 }
-// --- NEW: STATISTICAL MOMENTS & SMART PROCESS IDENTIFICATION ---
+//STATISTICAL MOMENTS
 
 export function calculateMoments(data: number[]) {
   const n = data.length;
@@ -235,7 +231,7 @@ export function calculateMoments(data: number[]) {
   return {
     skewness: Math.round(skewness * 100) / 100,
     kurtosis: Math.round(kurtosis * 100) / 100,
-    process: "Pending" // Will be assigned by the Smart Identifier below
+    process: "Pending"
   };
 }
 
