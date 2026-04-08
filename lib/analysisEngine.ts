@@ -215,8 +215,19 @@ export function calculateMoments(data: number[]) {
 
   // A perfect Gaussian has Skewness = 0 and Kurtosis = 3.
   // If it deviates significantly, it might be Poisson, Markov, or heavily Colored.
+// A perfect Gaussian has Skewness = 0 and Kurtosis = 3.
   const isGaussian = Math.abs(skewness) < 0.5 && Math.abs(kurtosis - 3) < 1.0;
-  const processName = isGaussian ? "Gaussian (Normal)" : "Non-Gaussian (Unknown)";
+  
+  let processName = "Unknown";
+  if (isGaussian) {
+    processName = "Gaussian (Normal)";
+  } else if (kurtosis > 4.5) {
+    // High kurtosis (heavy tails/spikes) means impulsive events
+    processName = "Poisson (Impulsive)";
+  } else {
+    // If it's not impulsive and not Gaussian, it's highly correlated
+    processName = "Markov (Colored/Drift)";
+  }
 
   return {
     skewness: Math.round(skewness * 100) / 100,
