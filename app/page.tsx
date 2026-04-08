@@ -4,19 +4,21 @@ import { useState } from "react";
 import { motion, AnimatePresence, easeOut, easeIn } from "framer-motion";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, LineChart, Waves, Cpu, ChevronRight, ArrowLeft, Target, ShieldAlert, Rocket, Info, BarChart3 } from "lucide-react";
+import { Activity, LineChart, Waves, Cpu, ChevronRight, ArrowLeft, Target, ShieldAlert, Rocket, Info, BarChart3, ActivitySquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import AdaptiveFilterSim from "@/components/simulations/AdaptiveFilterSim";
-import { BrainCircuit } from "lucide-react"; // Grab the icon too
+import { BrainCircuit } from "lucide-react";
 
 import DistributionSim from "@/components/simulations/DistributionSim";
 import SingleSensorSim from "@/components/simulations/SingleSensorSim";
-import SensorFusionSim from "@/components/simulations/SensorFusionSim";
-import CSVFilterSim from "@/components/simulations/CSVFilterSim";
 import SensorDriftSim from "@/components/simulations/SensorDriftSim";
 import SignalAnalysisSim from "@/components/simulations/SignalAnalysisSim";
-import { ActivitySquare } from "lucide-react";
+import CSVFilterSim from "@/components/simulations/CSVFilterSim";
+import AdaptiveFilterSim from "@/components/simulations/AdaptiveFilterSim";
+import SensorFusionSim from "@/components/simulations/SensorFusionSim";
 
+// ==========================================
+// REORGANIZED THEORY CONTENT (LOGICAL PIPELINE)
+// ==========================================
 const theoryContent = {
   distribution: { 
     title: "Statistical Distributions", 
@@ -24,14 +26,14 @@ const theoryContent = {
     color: "amber",
     icon: BarChart3,
     sections: [
-      { heading: "The Problem", text: "Computers natively generate uniform randomness (all values equally likely), but physical sensor noise typically follows a normal (Gaussian) distribution where extreme errors are rare." },
+      { heading: "The Math Foundation", text: "Computers natively generate uniform randomness (all values equally likely), but physical sensor noise typically follows a normal (Gaussian) distribution where extreme errors are rare." },
       { heading: "Mathematical Approach", text: "The Box-Muller transform is a pseudo-random number sampling method. It takes two independent, uniformly distributed random numbers and maps them onto a mathematically perfect Gaussian distribution." },
       { heading: "Expected Outcomes", text: "Toggle between Uniform and Gaussian. As you increase the sample size (Law of Large Numbers), watch the raw data coalesce into a flat rectangular block vs. a perfect mathematical Bell Curve." }
     ]
   },
   single: { 
     title: "Additive White Gaussian Noise (AWGN)", 
-    subtitle: "The Fundamental Stochastic Model",
+    subtitle: "High-Frequency Stochastic Corruption",
     color: "blue",
     icon: LineChart,
     sections: [
@@ -40,73 +42,65 @@ const theoryContent = {
       { heading: "Expected Outcomes", text: "As you increase the Standard Deviation (σ), the timeline becomes visibly jagged, but the underlying histogram will perfectly map to a theoretical Bell Curve, proving the integrity of the math engine." }
     ]
   },
-  fusion: { 
-    title: "Variance-Weighted Sensor Fusion", 
-    subtitle: "Multi-Sensor Calibration & Weighting",
-    color: "purple",
-    icon: Cpu,
-    sections: [
-      { heading: "The Problem", text: "In aerospace and robotics, a single sensor is a single point of failure. When multiple sensors measure the same environment, they inherently disagree due to their independent AWGN profiles." },
-      { heading: "Mathematical Approach", text: "We implement the core logic of the Kalman Update Step. By weighting each sensor inversely proportional to its variance (σ²), the algorithm dynamically calculates the statistically optimal 'true' state between the two." },
-      { heading: "Expected Outcomes", text: "The Fused (Purple) line will automatically 'cling' to the sensor you assign a lower variance to. The mathematics guarantee that the fused output will always have a lower overall error than the worst individual sensor." }
-    ]
-  },
-  csv: { 
-    title: "1D Discrete Kalman State Estimation", 
-    subtitle: "Applied Filtering on Real-World Data",
-    color: "emerald",
-    icon: ShieldAlert,
-    sections: [
-      { heading: "The Problem", text: "Simulations are perfect, but the real world is chaotic. We need an algorithm capable of recovering a hidden true state from highly corrupted, unpredictable CSV data arrays." },
-      { heading: "Mathematical Approach", text: "We built a 1D Discrete Kalman Filter. It operates in two steps: Prediction (estimating the next state based on Process Noise 'Q') and Update (correcting the estimate using the Kalman Gain 'K' and Measurement Noise 'R')." },
-      { heading: "Expected Outcomes", text: "Upload a CSV. By tuning the R slider (Sensor Distrust), you dictate how aggressively the math smooths the data. Tuning the Q slider dictates how fast the filter tracks sudden, legitimate spikes in the true signal." }
-    ]
-  },
-  lms: { 
-    title: "Adaptive Filter (LMS Algorithm)", 
-    subtitle: "Machine Learning in Digital Signal Processing",
-    color: "cyan",
-    icon: BrainCircuit,
-    sections: [
-      { heading: "The Problem", text: "Static filters (like Low-Pass or Kalman) require pre-tuned parameters. If the environmental noise profile suddenly changes in frequency or amplitude, static filters fail." },
-      { heading: "Mathematical Approach", text: "We implemented the Least Mean Squares (LMS) stochastic gradient descent algorithm. It calculates the error between its prediction and the desired signal, actively updating its own weights to converge on the truth." },
-      { heading: "Expected Outcomes", text: "At t=0, the filter knows nothing (flat line). Watch as the cyan line 'learns' to extract the sine wave from the red noise over time. If you push the Learning Rate (μ) too high, the math will explode into chaos." }
-    ]
-  },
   drift: { 
     title: "Brownian Motion & Random Walk", 
-    subtitle: "Cumulative Stochastic Integration Errors",
+    subtitle: "Cumulative Low-Frequency Drift",
     color: "rose",
     icon: Waves,
     sections: [
       { heading: "The Problem", text: "Inertial Measurement Units (IMUs) don't just suffer from high-frequency jitter. Tiny measurement errors accumulate during integration over time, causing a 'drift' where the sensor loses its absolute frame of reference." },
       { heading: "Mathematical Approach", text: "We mathematically model Brownian Motion by executing a Discrete Random Walk. Instead of resetting the noise to zero, each stochastic Gaussian step is cumulatively added to the previous one." },
-      { heading: "Expected Outcomes", text: "Turn White Noise to zero and Drift severity up. You will see the sensor slowly 'wander' infinitely away from the true signal. This proves why IMUs must be fused with absolute sensors (like GPS or Magnetometers) in the real world." }
+      { heading: "Expected Outcomes", text: "Turn White Noise to zero and Drift severity up. You will see the sensor slowly 'wander' infinitely away from the true signal. This proves why IMUs must be fused with absolute sensors in the real world." }
     ]
   },
   analysis: { 
-    title: "DSP Signal Analysis", 
-    subtitle: "Pre/Post Filtering & Autocorrelation",
+    title: "DSP Signal Diagnostics", 
+    subtitle: "Identifying the Random Process",
     color: "emerald",
     icon: ActivitySquare,
     sections: [
-      { heading: "The Problem", text: "Visually looking at a filtered signal isn't enough for engineering. We must mathematically quantify the quality of the signal and mathematically identify the exact type of noise corrupting it." },
-      { heading: "Mathematical Approach", text: "We compute the Signal-to-Noise Ratio (SNR) in Decibels (dB) before and after filtering. We also compute the Discrete Autocorrelation function to test the statistical independence of the noise samples." },
-      { heading: "Expected Outcomes", text: "The system dynamically calculates the +dB improvement of your filter. The Autocorrelation graph will show a massive spike at Lag 0 and drop instantly to near-zero, definitively proving the noise is AWGN (White Noise)." }
+      { heading: "The Diagnosis", text: "Before we can filter a signal, we must identify its underlying random process, prove its stationarity, and quantify the Signal-to-Noise Ratio (SNR)." },
+      { heading: "Mathematical Approach", text: "We compute Skewness/Kurtosis to identify the PDF. We calculate Power Spectral Density (PSD) and Autocorrelation to classify the noise color. Finally, we execute a Wide-Sense Stationary (WSS) check." },
+      { heading: "Expected Outcomes", text: "Watch the dashboard instantly diagnose the noise. White noise will show a flat PSD and a lag-0 Autocorrelation spike. Colored noise will show a sloping PSD. The system will mathematically prove if the process is Gaussian." }
     ]
   },
+  csv: { 
+    title: "1D Discrete Kalman Filter", 
+    subtitle: "Static State Estimation on CSV Data",
+    color: "emerald",
+    icon: ShieldAlert,
+    sections: [
+      { heading: "The Static Cure", text: "Now that we understand the noise, we must filter it. We need an algorithm capable of recovering a hidden true state from highly corrupted, unpredictable real-world data." },
+      { heading: "Mathematical Approach", text: "We built a 1D Discrete Kalman Filter. It operates in two steps: Prediction (estimating the next state based on Process Noise 'Q') and Update (correcting the estimate using the Kalman Gain 'K' and Measurement Noise 'R')." },
+      { heading: "Expected Outcomes", text: "Upload a CSV. By tuning the R slider (Sensor Distrust), you dictate how aggressively the math smooths the data. Notice the glowing green shadow representing the Error Covariance (Uncertainty Bounds)." }
+    ]
+  },
+  lms: { 
+    title: "Adaptive Filter (LMS)", 
+    subtitle: "Machine Learning DSP",
+    color: "cyan",
+    icon: BrainCircuit,
+    sections: [
+      { heading: "The Smart Cure", text: "Static filters (like the Kalman filter before this) require pre-tuned parameters. If the environmental noise profile suddenly changes in frequency or amplitude, static filters fail." },
+      { heading: "Mathematical Approach", text: "We implemented the Least Mean Squares (LMS) stochastic gradient descent algorithm. It calculates the error between its prediction and the desired signal, actively updating its own weights to converge on the truth." },
+      { heading: "Expected Outcomes", text: "At t=0, the filter knows nothing (flat line). Watch as the cyan line 'learns' to extract the sine wave from the red noise over time. If you push the Learning Rate (μ) too high, the math will explode into chaos." }
+    ]
+  },
+  fusion: { 
+    title: "Variance-Weighted Sensor Fusion", 
+    subtitle: "Hardware-Level Optimization",
+    color: "purple",
+    icon: Cpu,
+    sections: [
+      { heading: "The Hardware Solution", text: "If filters fail, the ultimate solution is multiple sensors. When multiple sensors measure the same environment, they inherently disagree due to their independent AWGN profiles." },
+      { heading: "Mathematical Approach", text: "We implement the core logic of the Kalman Update Step. By weighting each sensor inversely proportional to its variance (σ²), the algorithm dynamically calculates the statistically optimal 'true' state between the two." },
+      { heading: "Expected Outcomes", text: "The Fused (Purple) line will automatically 'cling' to the sensor you assign a lower variance to. The mathematics guarantee that the fused output will always have a lower overall error than the worst individual sensor." }
+    ]
+  }
 };
 type TabKey = keyof typeof theoryContent;
 
 // --- Animation Variants ---
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.15, delayChildren: 0.2 } }
-};
-const itemVariants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 80, damping: 20 } }
-};
 const tabTransition = {
   hidden: { opacity: 0, y: 20, scale: 0.98, filter: "blur(8px)" },
   visible: { opacity: 1, y: 0, scale: 1, filter: "blur(0px)", transition: { duration: 0.5, ease: easeOut } },
@@ -209,23 +203,21 @@ function LandingView({ onLaunch }: { onLaunch: () => void }) {
 // 2. DASHBOARD VIEW (WITH ANIMATED TABS)
 // ==========================================
 function DashboardView({ onBack }: { onBack: () => void }) {
-  // Start on the new Distribution tab
   const [activeTab, setActiveTab] = useState<TabKey>("distribution");
 
-  // Get current active theory data
   const currentTheory = theoryContent[activeTab];
   const IconComponent = currentTheory.icon;
 
-  // Render the correct simulation based on state
+  // Render the correct simulation based on the updated logical flow
   const renderSimulation = () => {
     switch (activeTab) {
       case "distribution": return <DistributionSim />;
       case "single": return <SingleSensorSim />;
-      case "fusion": return <SensorFusionSim />;
-      case "csv": return <CSVFilterSim />;
       case "drift": return <SensorDriftSim />;
-      case "lms": return <AdaptiveFilterSim />;
       case "analysis": return <SignalAnalysisSim />;
+      case "csv": return <CSVFilterSim />;
+      case "lms": return <AdaptiveFilterSim />;
+      case "fusion": return <SensorFusionSim />;
     }
   };
 
@@ -251,20 +243,19 @@ function DashboardView({ onBack }: { onBack: () => void }) {
           </Button>
         </header>
 
-{/* Tab Navigation updated with 7 tabs */}
+        {/* LOGICALLY ORDERED TAB NAVIGATION */}
         <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as TabKey)} className="w-full">
           <TabsList className="bg-neutral-900 border border-neutral-800 flex flex-wrap h-auto">
             <TabsTrigger value="distribution" className="data-[state=active]:bg-neutral-800 py-2 px-4">1. Distribution Math</TabsTrigger>
             <TabsTrigger value="single" className="data-[state=active]:bg-neutral-800 py-2 px-4">2. AWGN Noise</TabsTrigger>
-            <TabsTrigger value="fusion" className="data-[state=active]:bg-neutral-800 py-2 px-4">3. Sensor Fusion</TabsTrigger>
-            <TabsTrigger value="csv" className="data-[state=active]:bg-neutral-800 py-2 px-4">4. CSV Filter</TabsTrigger>
-            <TabsTrigger value="drift" className="data-[state=active]:bg-neutral-800 py-2 px-4">5. Brownian Drift</TabsTrigger>
+            <TabsTrigger value="drift" className="data-[state=active]:bg-neutral-800 py-2 px-4">3. Brownian Drift</TabsTrigger>
+            <TabsTrigger value="analysis" className="data-[state=active]:bg-neutral-800 py-2 px-4">4. DSP Diagnostics</TabsTrigger>
+            <TabsTrigger value="csv" className="data-[state=active]:bg-neutral-800 py-2 px-4">5. Kalman Filter (CSV)</TabsTrigger>
             <TabsTrigger value="lms" className="data-[state=active]:bg-neutral-800 py-2 px-4">6. LMS Adaptive Filter</TabsTrigger>
-            <TabsTrigger value="analysis" className="data-[state=active]:bg-neutral-800 py-2 px-4">7. DSP Analysis</TabsTrigger>
+            <TabsTrigger value="fusion" className="data-[state=active]:bg-neutral-800 py-2 px-4">7. Sensor Fusion</TabsTrigger>
           </TabsList>
         </Tabs>
 
-        {/* ANIMATE PRESENCE Wraps Theory Panel AND Simulation */}
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}

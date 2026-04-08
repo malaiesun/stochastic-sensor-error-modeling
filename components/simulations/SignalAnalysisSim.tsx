@@ -11,12 +11,12 @@ import { runSignalAnalysis, runCustomAnalysis, parseAnalysisCSV } from "@/lib/an
 
 export default function SignalAnalysisSim() {
   const [mode, setMode] = useState<"simulated" | "csv">("simulated");
-  
+
   // Params
   const [noiseLevel, setNoiseLevel] = useState(5.0);
   const [filterWindow, setFilterWindow] = useState(7);
   const [noiseType, setNoiseType] = useState<"white" | "colored">("white");
-  
+
   const [csvData, setCsvData] = useState<number[]>([]);
   const [data, setData] = useState<any>(null);
 
@@ -32,8 +32,8 @@ export default function SignalAnalysisSim() {
     }
   };
 
-  useEffect(() => { 
-    runSimulation(); 
+  useEffect(() => {
+    runSimulation();
   }, [mode, noiseLevel, filterWindow, noiseType, csvData]);
 
   const handleUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -49,13 +49,13 @@ export default function SignalAnalysisSim() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-      
+
       {/* Controls Column */}
       <div className="lg:col-span-1 space-y-6">
         <Card className="bg-neutral-900 border-neutral-800">
-          <CardHeader><CardTitle className="text-lg text-emerald-400 flex items-center gap-2"><ActivitySquare className="w-5 h-5"/> Analysis Config</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-lg text-emerald-400 flex items-center gap-2"><ActivitySquare className="w-5 h-5" /> Analysis Config</CardTitle></CardHeader>
           <CardContent className="space-y-6">
-            
+
             {/* Mode Toggle */}
             <Tabs value={mode} onValueChange={(v) => setMode(v as "simulated" | "csv")} className="w-full">
               <TabsList className="grid w-full grid-cols-2 bg-neutral-950 border border-neutral-800">
@@ -98,23 +98,40 @@ export default function SignalAnalysisSim() {
             </div>
           </CardContent>
         </Card>
-
         {/* Diagnostics Card */}
         {data && (
           <Card className="bg-neutral-900 border-neutral-800 border-l-4 border-l-emerald-500">
             <CardHeader className="pb-2"><CardTitle className="text-sm text-neutral-400 font-medium">System Diagnostics</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              
+
+              {/* Process Identification (Kurtosis/Skewness) */}
+              <div className="bg-neutral-950 p-3 rounded border border-neutral-800 space-y-2">
+                <div className="flex justify-between items-center border-b border-neutral-800 pb-2">
+                  <span className="text-xs font-semibold text-neutral-300">Process Identification:</span>
+                  <span className={`text-xs font-bold ${data.moments.process.includes("Gaussian") ? "text-blue-400" : "text-amber-400"}`}>
+                    {data.moments.process}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-xs font-mono">
+                  <span className="text-neutral-500">Skewness (approx - 0):</span>
+                  <span className="text-neutral-300">{data.moments.skewness}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs font-mono">
+                  <span className="text-neutral-500">Kurtosis (approx - 3):</span>
+                  <span className="text-neutral-300">{data.moments.kurtosis}</span>
+                </div>
+              </div>
+
               {/* WSS Check */}
               <div className="flex justify-between items-center bg-neutral-950 p-2 rounded border border-neutral-800">
                 <span className="text-xs font-semibold">Wide-Sense Stationary:</span>
-                {data.isWSS ? <span className="text-emerald-400 flex items-center text-xs font-bold"><CheckCircle2 className="w-4 h-4 mr-1"/> PASS</span> : <span className="text-rose-400 flex items-center text-xs font-bold"><XCircle className="w-4 h-4 mr-1"/> FAIL</span>}
+                {data.isWSS ? <span className="text-emerald-400 flex items-center text-xs font-bold"><CheckCircle2 className="w-4 h-4 mr-1" /> PASS</span> : <span className="text-rose-400 flex items-center text-xs font-bold"><XCircle className="w-4 h-4 mr-1" /> FAIL</span>}
               </div>
 
               {/* Hypothesis Test */}
               <div className="flex justify-between items-center bg-neutral-950 p-2 rounded border border-neutral-800">
-                <span className="text-xs font-semibold">Hypothesis Test (H1):</span>
-                {data.hypothesis ? <span className="text-emerald-400 flex items-center text-xs font-bold"><Zap className="w-4 h-4 mr-1"/> DETECTED</span> : <span className="text-rose-400 flex items-center text-xs font-bold"><XCircle className="w-4 h-4 mr-1"/> NO SIGNAL</span>}
+                <span className="text-xs font-semibold">Hypothesis Test H1:</span>
+                {data.hypothesis ? <span className="text-emerald-400 flex items-center text-xs font-bold"><Zap className="w-4 h-4 mr-1" /> DETECTED</span> : <span className="text-rose-400 flex items-center text-xs font-bold"><XCircle className="w-4 h-4 mr-1" /> NO SIGNAL</span>}
               </div>
 
               {/* SNR Stats */}
@@ -132,7 +149,7 @@ export default function SignalAnalysisSim() {
 
       {/* Charts Column */}
       <div className="lg:col-span-3 space-y-6">
-        
+
         {/* Pre/Post Filtering Chart */}
         <Card className="bg-neutral-900 border-neutral-800">
           <CardHeader><CardTitle className="text-lg">Pre-Filter vs. Post-Filter Analysis</CardTitle></CardHeader>
@@ -141,8 +158,8 @@ export default function SignalAnalysisSim() {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={data.timeSeries} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                  <XAxis dataKey="time" stroke="#888" tick={{fontSize: 12}} />
-                  <YAxis stroke="#888" tick={{fontSize: 12}} domain={['auto', 'auto']} />
+                  <XAxis dataKey="time" stroke="#888" tick={{ fontSize: 12 }} />
+                  <YAxis stroke="#888" tick={{ fontSize: 12 }} domain={['auto', 'auto']} />
                   <Tooltip contentStyle={{ backgroundColor: '#171717', borderColor: '#333' }} />
                   <Line type="monotone" dataKey="noisySignal" stroke="#ef4444" strokeWidth={1} dot={false} name="Raw Input" opacity={0.4} />
                   {mode === "simulated" && (
@@ -167,8 +184,8 @@ export default function SignalAnalysisSim() {
               <CardContent className="h-[180px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={data.autocorrelation}>
-                    <XAxis dataKey="lag" stroke="#888" tick={{fontSize: 10}} />
-                    <Tooltip cursor={{fill: '#262626'}} contentStyle={{ backgroundColor: '#171717', borderColor: '#333' }} />
+                    <XAxis dataKey="lag" stroke="#888" tick={{ fontSize: 10 }} />
+                    <Tooltip cursor={{ fill: '#262626' }} contentStyle={{ backgroundColor: '#171717', borderColor: '#333' }} />
                     <Bar dataKey="value" fill="#6366f1" radius={[2, 2, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -181,7 +198,7 @@ export default function SignalAnalysisSim() {
               <CardContent className="h-[180px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={data.psd}>
-                    <XAxis dataKey="frequency" stroke="#888" tick={{fontSize: 10}} />
+                    <XAxis dataKey="frequency" stroke="#888" tick={{ fontSize: 10 }} />
                     <Tooltip contentStyle={{ backgroundColor: '#171717', borderColor: '#333' }} />
                     <Area type="monotone" dataKey="power" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.3} />
                   </AreaChart>

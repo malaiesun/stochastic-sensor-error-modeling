@@ -123,7 +123,8 @@ export function runCustomAnalysis(rawData: number[], filterWindow: number) {
     autocorrelation: calculateAutocorrelation(estimatedNoise, Math.min(30, Math.floor(rawData.length / 2))),
     psd: calculatePSD(estimatedNoise),
     isWSS: checkWSS(estimatedNoise),
-    hypothesis: hypothesisDetected
+    hypothesis: hypothesisDetected,
+    moments: calculateMoments(estimatedNoise)
   };
 }
 
@@ -180,6 +181,67 @@ export function runSignalAnalysis(noiseLevel: number, filterWindow: number, isCo
     autocorrelation: calculateAutocorrelation(noiseOnly, 30),
     psd: calculatePSD(noiseOnly),
     isWSS: checkWSS(noiseOnly),
-    hypothesis: hypothesisDetected
+    hypothesis: hypothesisDetected,
+    moments: calculateMoments(residualNoise)
   };
 }
+
+// --- NEW: STATISTICAL MOMENTS & PROCESS IDENTIFICATION ---
+
+export function calculateMoments(data: number[]) {
+  const n = data.length;
+  if (n === 0) return { skewness: 0, kurtosis: 0, process: "Unknown" };
+  
+  const mean = data.reduce((a, b) => a + b, 0) / n;
+  let variance = 0, skewness = 0, kurtosis = 0;
+  
+  for (let i = 0; i < n; i++) {
+    const dev = data[i] - mean;
+    variance += dev * dev;
+  }
+  variance /= n;
+  const stdDev = Math.sqrt(variance);
+  
+  if (stdDev === 0) return { skewness: 0, kurtosis: 0, process: "Deterministic" };
+
+  for (let i = 0; i < n; i++) {
+    const dev = data[i] - mean;
+    skewness += Math.pow(dev, 3);
+    kurtosis += Math.pow(dev, 4);
+  }
+  
+  skewness = (skewness / n) / Math.pow(stdDev, 3);
+  kurtosis = (kurtosis / n) / Math.pow(stdDev, 4);
+
+  // A perfect Gaussian has Skewness = 0 and Kurtosis = 3.
+  // If it deviates significantly, it might be Poisson, Markov, or heavily Colored.
+  const isGaussian = Math.abs(skewness) < 0.5 && Math.abs(kurtosis - 3) < 1.0;
+  const processName = isGaussian ? "Gaussian (Normal)" : "Non-Gaussian (Unknown)";
+
+  return {
+    skewness: Math.round(skewness * 100) / 100,
+    kurtosis: Math.round(kurtosis * 100) / 100,
+    process: processName
+  };
+}
+
+export function runMatchedFilter(noisySignal: number[], template: number[]): number[] {
+  const result = [];
+  const n = noisySignal.length;
+  const m = template.length;
+
+  for (let i = 0; i < n - m; i++) {
+    let sum = 0;
+    for (let j = 0; j < m; j++) {
+      // Cross-correlation multiplication
+      sum += noisySignal[i + j] * template[j];
+    }
+    // Normalize slightly for chart rendering
+    result.push(sum / (m / 2)); 
+  }
+  
+  // Pad the end to keep array length consistent
+  while (result.length < n) result.push(0);
+  return result;
+}
+
