@@ -61,7 +61,9 @@ export function checkWSS(data: number[]): boolean {
   const meanDiff = Math.abs(mean1 - mean2);
   const varRatio = Math.max(var1, var2) / (Math.min(var1, var2) || 0.0001);
 
-  return meanDiff < 1.5 && varRatio < 1.5;
+  // UPGRADE: Scale-invariant WSS threshold instead of a fixed hardcoded number
+  const threshold = Math.sqrt(Math.max(var1, var2)) * 0.8;
+  return meanDiff < threshold && varRatio < 3.0;
 }
 
 export function applyLowPassFilter(data: number[], windowSize: number = 5): number[] {
@@ -96,7 +98,7 @@ export function runCustomAnalysis(rawData: number[], filterWindow: number) {
 
   const filteredSignal = applyLowPassFilter(rawData, filterWindow);
 
-  // Estimate noise by subtracting the filtered signal from the raw data
+  // Estimate noise for SNR calculations
   const estimatedNoise = [];
   for (let i = 0; i < rawData.length; i++) {
     estimatedNoise.push(rawData[i] - filteredSignal[i]);
@@ -104,7 +106,7 @@ export function runCustomAnalysis(rawData: number[], filterWindow: number) {
 
   const estimatedSNR = calculateSNR(filteredSignal, estimatedNoise);
   const signalPeak = Math.max(...filteredSignal.map(Math.abs));
-  const hypothesisDetected = signalPeak > 3.0; // Basic threshold
+  const hypothesisDetected = signalPeak > 3.0; 
 
   const timeSeries = [];
   for (let t = 0; t < rawData.length; t++) {
@@ -115,20 +117,29 @@ export function runCustomAnalysis(rawData: number[], filterWindow: number) {
     });
   }
 
+  // --- SMART PROCESS IDENTIFICATION (FIXED) ---
+  // BUG FIX: We MUST analyze the 'rawData', not the 'estimatedNoise'!
+  // The LPF strips out low-frequency drift and memory. To identify the 
+  // true process of the CSV, we look at the raw input.
+  const autocorr = calculateAutocorrelation(rawData, Math.min(30, Math.floor(rawData.length / 2)));
+  const isWSSFlag = checkWSS(rawData);
+  const momentsData = calculateMoments(rawData);
+  
+  // Use the new smart identifier
+  momentsData.process = identifyProcess(momentsData.kurtosis, isWSSFlag, autocorr);
+
   return {
     timeSeries,
     rawSNR: "Unknown",
     filteredSNR: Math.round(estimatedSNR * 100) / 100,
     improvement: "N/A",
-    autocorrelation: calculateAutocorrelation(estimatedNoise, Math.min(30, Math.floor(rawData.length / 2))),
-    psd: calculatePSD(estimatedNoise),
-    isWSS: checkWSS(estimatedNoise),
+    autocorrelation: autocorr,   // Now reflects the raw data's memory
+    psd: calculatePSD(rawData),  // Now reflects the raw data's frequency spectrum
+    isWSS: isWSSFlag,            // Now reflects the raw data's drift
     hypothesis: hypothesisDetected,
-    moments: calculateMoments(estimatedNoise)
+    moments: momentsData         // Now holds the accurate process ID
   };
 }
-
-// --- SIMULATION ENGINE ---
 
 export function runSignalAnalysis(noiseLevel: number, filterWindow: number, isColoredNoise: boolean) {
   const numSamples = 200;
@@ -173,20 +184,28 @@ export function runSignalAnalysis(noiseLevel: number, filterWindow: number, isCo
     });
   }
 
+  // --- SMART PROCESS IDENTIFICATION (NEW) ---
+  const autocorr = calculateAutocorrelation(noiseOnly, 30);
+  const isWSSFlag = checkWSS(noiseOnly);
+  // Important: We analyze 'noiseOnly', NOT 'residualNoise'
+  const momentsData = calculateMoments(noiseOnly); 
+  
+  // Use the new smart identifier to check for Markov, Wiener, or Poisson
+  momentsData.process = identifyProcess(momentsData.kurtosis, isWSSFlag, autocorr);
+
   return {
     timeSeries,
     rawSNR: Math.round(rawSNR * 100) / 100,
     filteredSNR: Math.round(filteredSNR * 100) / 100,
     improvement: Math.round((filteredSNR - rawSNR) * 100) / 100,
-    autocorrelation: calculateAutocorrelation(noiseOnly, 30),
+    autocorrelation: autocorr, // Use the variable we calculated above
     psd: calculatePSD(noiseOnly),
-    isWSS: checkWSS(noiseOnly),
+    isWSS: isWSSFlag,          // Use the variable we calculated above
     hypothesis: hypothesisDetected,
-    moments: calculateMoments(residualNoise)
+    moments: momentsData       // Use the updated moments data!
   };
 }
-
-// --- NEW: STATISTICAL MOMENTS & PROCESS IDENTIFICATION ---
+// --- NEW: STATISTICAL MOMENTS & SMART PROCESS IDENTIFICATION ---
 
 export function calculateMoments(data: number[]) {
   const n = data.length;
@@ -213,27 +232,37 @@ export function calculateMoments(data: number[]) {
   skewness = (skewness / n) / Math.pow(stdDev, 3);
   kurtosis = (kurtosis / n) / Math.pow(stdDev, 4);
 
-  // A perfect Gaussian has Skewness = 0 and Kurtosis = 3.
-  // If it deviates significantly, it might be Poisson, Markov, or heavily Colored.
-// A perfect Gaussian has Skewness = 0 and Kurtosis = 3.
-  const isGaussian = Math.abs(skewness) < 0.5 && Math.abs(kurtosis - 3) < 1.0;
-  
-  let processName = "Unknown";
-  if (isGaussian) {
-    processName = "Gaussian (Normal)";
-  } else if (kurtosis > 4.5) {
-    // High kurtosis (heavy tails/spikes) means impulsive events
-    processName = "Poisson (Impulsive)";
-  } else {
-    // If it's not impulsive and not Gaussian, it's highly correlated
-    processName = "Markov (Colored/Drift)";
-  }
-
   return {
     skewness: Math.round(skewness * 100) / 100,
     kurtosis: Math.round(kurtosis * 100) / 100,
-    process: processName
+    process: "Pending" // Will be assigned by the Smart Identifier below
   };
+}
+
+export function identifyProcess(kurtosis: number, isWSS: boolean, autocorr: {lag: number, value: number}[]): string {
+  // 1. Check for extreme impulsive spikes (Tails)
+  if (kurtosis > 4.5) return "Poisson (Impulsive)";
+  
+  // Ensure we have enough correlation data to analyze
+  if (autocorr.length > 10 && autocorr[0].value > 0) {
+    const lag1 = Math.abs(autocorr[1].value / autocorr[0].value);
+    const lag10 = Math.abs(autocorr[10].value / autocorr[0].value);
+
+    // 2. Wiener (Random Walk) has "infinite" memory. 
+    // The correlation decays extremely slowly. Even at lag 10, it is highly correlated.
+    if (lag1 > 0.9 && lag10 > 0.6) {
+      return "Wiener (Brownian Drift)";
+    }
+
+    // 3. Markov AR(1) has exponentially decaying memory. 
+    // It is high at lag 1, but drops off heavily by lag 10.
+    if (lag1 > 0.3) {
+      return "Markov (Colored Noise)";
+    }
+  }
+  
+  // 4. If it has no memory and no spikes, it's pure AWGN
+  return "Gaussian (White Noise)";
 }
 
 export function runMatchedFilter(noisySignal: number[], template: number[]): number[] {
@@ -244,15 +273,11 @@ export function runMatchedFilter(noisySignal: number[], template: number[]): num
   for (let i = 0; i < n - m; i++) {
     let sum = 0;
     for (let j = 0; j < m; j++) {
-      // Cross-correlation multiplication
       sum += noisySignal[i + j] * template[j];
     }
-    // Normalize slightly for chart rendering
     result.push(sum / (m / 2)); 
   }
   
-  // Pad the end to keep array length consistent
   while (result.length < n) result.push(0);
   return result;
 }
-
