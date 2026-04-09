@@ -1,0 +1,799 @@
+\documentclass[12pt, a4paper]{article}
+
+% ============================================================
+%  PACKAGES
+% ============================================================
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath, amssymb, amsfonts}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{listings}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{parskip}
+\usepackage{setspace}
+\usepackage{tcolorbox}
+
+% ============================================================
+%  COLOURS & STYLING
+% ============================================================
+\definecolor{primary}{RGB}{59,130,246}      % blue-500
+\definecolor{accent}{RGB}{16,185,129}       % emerald-500
+\definecolor{warning}{RGB}{245,158,11}      % amber-500
+\definecolor{danger}{RGB}{251,113,133}      % rose-400
+\definecolor{purple}{RGB}{168,85,247}       % purple-500
+\definecolor{codebg}{RGB}{23,23,23}
+\definecolor{neutral}{RGB}{115,115,115}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=primary,
+  urlcolor=primary,
+  citecolor=accent
+}
+
+\titleformat{\section}{\Large\bfseries\color{primary}}{}{0em}{\thesection\quad}[\titlerule]
+\titleformat{\subsection}{\large\bfseries\color{accent}}{}{0em}{\thesubsection\quad}
+\titleformat{\subsubsection}{\normalsize\bfseries\color{warning}}{}{0em}{\thesubsubsection\quad}
+
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\textcolor{neutral}{\small Stochastic Measurement \& Sensor Fusion}}
+\lhead{\textcolor{neutral}{\small BECE207L --- Random Processes}}
+\cfoot{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\lstset{
+  basicstyle=\ttfamily\small\color{white},
+  backgroundcolor=\color{codebg},
+  breaklines=true,
+  frame=single,
+  rulecolor=\color{neutral},
+  keywordstyle=\color{primary},
+  commentstyle=\color{neutral},
+  stringstyle=\color{accent},
+  numbers=left,
+  numberstyle=\tiny\color{neutral},
+  numbersep=8pt,
+  tabsize=2,
+  captionpos=b
+}
+
+% ============================================================
+%  DOCUMENT
+% ============================================================
+\begin{document}
+
+% ====================================================
+%  TITLE PAGE
+% ====================================================
+\begin{titlepage}
+  \centering
+  \vspace*{1cm}
+
+  {\Large\bfseries Vellore Institute of Technology}\\[0.3cm]
+  {\large School of Electronics Engineering}\\[0.3cm]
+  {\large BECE207L --- Random Processes}\\[2cm]
+
+  \hrule height 2pt
+  \vspace{0.6cm}
+  {\Huge\bfseries\color{primary} Stochastic Measurement \&\\[0.4cm] Sensor Fusion}\\[0.4cm]
+  {\LARGE\color{accent} An Interactive Simulation Dashboard}
+  \vspace{0.6cm}
+  \hrule height 2pt
+
+  \vspace{1.5cm}
+  {\large\bfseries A Course Project Report}\\[0.3cm]
+  {\normalsize Submitted in partial fulfilment of the requirements of BECE207L}
+
+  \vfill
+
+  \begin{tabular}{ll}
+    \toprule
+    \textbf{Student} & \textbf{Registration Number} \\
+    \midrule
+    S Malaiesun     & 24BEC1578 \\
+    T S Vishal Babu & 24BEC1575 \\
+    J Saran         & 24BEC1081 \\
+    \bottomrule
+  \end{tabular}
+
+  \vspace{1cm}
+  {\normalsize\textbf{Faculty Guide:} Prof. Kalaivanan K}\\[0.3cm]
+  {\normalsize\textbf{Date:} April 2026}
+\end{titlepage}
+
+% ====================================================
+%  TABLE OF CONTENTS
+% ====================================================
+\tableofcontents
+\newpage
+\onehalfspacing
+
+% ====================================================
+%  ABSTRACT
+% ====================================================
+\begin{tcolorbox}[colback=primary!5!white, colframe=primary, title=\textbf{Abstract}]
+  This report documents the design, mathematical theory, and implementation of an
+  interactive web-based simulation platform built for the BECE207L Random Processes
+  course. The platform provides a unified, seven-module environment for visualising and
+  experimenting with the full signal-processing pipeline encountered in modern sensor
+  systems: from the foundational mathematics of probability distributions, through
+  additive white Gaussian noise (AWGN) and Brownian random-walk drift, to diagnostic
+  signal analysis, optimal state estimation via the discrete Kalman filter, adaptive
+  noise cancellation via the Least Mean Squares (LMS) algorithm, and finally
+  variance-weighted sensor fusion. Every algorithm is implemented from scratch in
+  TypeScript without any external numerics library, and every result is rendered in
+  real-time interactive charts. The platform targets students and practising engineers
+  who need an intuitive yet mathematically rigorous laboratory for stochastic signal
+  processing.
+\end{tcolorbox}
+
+\vspace{1em}
+
+% ====================================================
+\section{Introduction}
+% ====================================================
+
+\subsection{Motivation}
+
+All physical measurements are corrupted by noise. Whether it is a MEMS inertial
+measurement unit (IMU) on an aircraft, a temperature sensor on an embedded controller,
+or a radar return from a target, the signal that reaches a digital processor is never a
+clean replica of the physical quantity being observed.  Understanding the statistical
+nature of that corruption is not merely academic: it is the prerequisite to designing
+filters and estimators that can recover the true quantity.
+
+The Random Processes course (BECE207L) covers the theoretical foundations of stochastic
+signals --- probability distributions, wide-sense stationarity, power spectral density,
+autocorrelation, the Kalman filter, and adaptive algorithms. However, the gap between
+textbook equations and observable behaviour is often large. This project bridges that
+gap by providing a live, parameter-driven simulation laboratory.
+
+\subsection{Project Objectives}
+
+\begin{enumerate}[leftmargin=*, label=\arabic*.]
+  \item Implement, from first principles in TypeScript, every major algorithm taught in
+        the course.
+  \item Provide real-time interactive visualisations so that the effect of changing a
+        single parameter (e.g.\ noise standard deviation, Kalman process noise $Q$,
+        LMS learning rate $\mu$) is immediately visible.
+  \item Structure the modules in a logical pedagogical pipeline, starting from the
+        mathematics of randomness and ending at hardware-level sensor fusion.
+  \item Allow the user to upload real sensor CSV data for Kalman filtering and signal
+        analysis, verifying the algorithms on non-synthetic data.
+\end{enumerate}
+
+\subsection{Technology Stack}
+
+The application is a Next.js 15 web application written in TypeScript. The UI is built
+with Tailwind CSS and shadcn/ui components. All interactive charts use Recharts.
+Animations are driven by Framer Motion. The entire numerics layer resides in six
+TypeScript modules inside the \texttt{/lib} directory --- no external maths library is
+used.
+
+\begin{table}[h!]
+  \centering
+  \caption{Technology Stack Overview}
+  \begin{tabular}{lll}
+    \toprule
+    \textbf{Layer} & \textbf{Technology} & \textbf{Purpose} \\
+    \midrule
+    Framework     & Next.js 15 (App Router) & SSR / client routing \\
+    Language      & TypeScript              & Type-safe numerics and UI \\
+    Styling       & Tailwind CSS            & Responsive dark-mode layout \\
+    Components    & shadcn/ui               & Sliders, Cards, Tabs, Buttons \\
+    Charting      & Recharts                & Real-time line, bar, area charts \\
+    Animation     & Framer Motion           & Cinematic transitions \\
+    Numerics      & Custom \texttt{/lib}    & All stochastic algorithms \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+% ====================================================
+\section{System Architecture}
+% ====================================================
+
+\subsection{Module Structure}
+
+The codebase is divided into two layers:
+
+\begin{itemize}
+  \item \textbf{Engine layer} (\texttt{/lib}): Pure TypeScript functions that perform
+        numerical computation. They have no UI dependencies and can be unit-tested
+        independently.
+  \item \textbf{Simulation layer} (\texttt{/components/simulations}): React components
+        that expose the engine functions to the user via sliders, CSV uploads, and charts.
+\end{itemize}
+
+\begin{table}[h!]
+  \centering
+  \caption{Engine Modules and Their Responsibilities}
+  \begin{tabular}{>{\ttfamily}ll}
+    \toprule
+    \textbf{File} & \textbf{Responsibility} \\
+    \midrule
+    stochasticEngine.ts & Gaussian RNG (Box-Muller), time-series generation, RMSE/variance \\
+    driftEngine.ts      & Brownian random-walk (integrated Gaussian steps) \\
+    filterEngine.ts     & 1-D discrete Kalman filter, CSV parser \\
+    lmsEngine.ts        & LMS adaptive FIR filter (stochastic gradient descent) \\
+    fusionEngine.ts     & Variance-weighted sensor fusion (Kalman update logic) \\
+    analysisEngine.ts   & SNR, PSD (DFT), autocorrelation, WSS test, moments, process ID \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Application Flow}
+
+The root \texttt{page.tsx} implements a two-state machine:
+
+\begin{enumerate}[label=\arabic*.]
+  \item \textbf{Landing View} --- A cinematic hero page that introduces the project,
+        lists contributors, and summarises all seven modules.
+  \item \textbf{Dashboard View} --- A seven-tab interface where each tab shows (a)~a
+        theory panel explaining the mathematics, and (b)~the live simulation widget.
+\end{enumerate}
+
+Framer Motion's \texttt{AnimatePresence} drives blur/scale transitions between pages
+and between active tabs, giving the interface a fluid, aerospace-grade aesthetic.
+
+% ====================================================
+\section{Mathematical Foundations \& Module Theory}
+% ====================================================
+
+The seven modules are ordered as a logical pipeline. Each module builds on the concepts
+established by the previous one.
+
+% --------------------------------------------------
+\subsection{Module 1 --- Statistical Distributions}
+% --------------------------------------------------
+
+\subsubsection{The Core Problem}
+
+Computers generate \emph{uniform} pseudo-random numbers: each value in $[0, 1)$ is
+equally likely. Physical noise, however, is not uniform --- it follows a
+\textbf{Gaussian (Normal) distribution}, where extreme values are exponentially rare.
+Before any sensor can be modelled, we must be able to generate Gaussian samples.
+
+\subsubsection{The Box-Muller Transform}
+
+Given two independent uniform random variables $U_1, U_2 \sim \mathcal{U}(0,1)$, the
+transform produces two independent standard normal samples:
+
+\begin{equation}
+  Z_0 = \sqrt{-2\ln U_1}\;\cos(2\pi U_2), \qquad
+  Z_1 = \sqrt{-2\ln U_1}\;\sin(2\pi U_2)
+  \label{eq:boxmuller}
+\end{equation}
+
+A general Gaussian sample with mean $\mu$ and standard deviation $\sigma$ is then:
+\begin{equation}
+  X = Z_0 \cdot \sigma + \mu
+\end{equation}
+
+The implementation in \texttt{stochasticEngine.ts}:
+\begin{itemize}
+  \item Guards against $\ln(0) \to -\infty$ by clamping $U_1 \geq 10^{-7}$.
+  \item Uses only $Z_0$ (one sample per call) for simplicity.
+\end{itemize}
+
+\subsubsection{What the Simulation Demonstrates}
+
+The user toggles between Uniform and Gaussian sampling and increases the sample count
+$N$. By the \textbf{Law of Large Numbers}, the empirical histogram converges to:
+\begin{itemize}
+  \item A flat rectangular block for Uniform.
+  \item A symmetric bell curve $\mathcal{N}(\mu, \sigma^2)$ for Gaussian.
+\end{itemize}
+
+% --------------------------------------------------
+\subsection{Module 2 --- Additive White Gaussian Noise (AWGN)}
+% --------------------------------------------------
+
+\subsubsection{Definition}
+
+AWGN is the canonical model for sensor noise. A sensor measurement $Z(t)$ of a true
+signal $X$ is modelled as:
+
+\begin{equation}
+  Z(t) = X + \beta + \varepsilon(t), \qquad \varepsilon(t) \sim \mathcal{N}(0, \sigma^2)
+  \label{eq:awgn}
+\end{equation}
+
+where $\beta$ is a \emph{constant bias} (systematic offset) and $\varepsilon(t)$ is
+zero-mean Gaussian noise (random jitter). The three key statistical descriptors are:
+
+\begin{align}
+  \text{Mean Error:} \quad & \mu_e = \frac{1}{N}\sum_{t=1}^{N} e(t) \approx \beta \\
+  \text{Variance:}   \quad & \sigma_e^2 = \frac{1}{N}\sum_{t=1}^{N}(e(t) - \mu_e)^2 \approx \sigma^2 \\
+  \text{RMSE:}       \quad & \text{RMSE} = \sqrt{\frac{1}{N}\sum_{t=1}^{N} e(t)^2}
+\end{align}
+
+\subsubsection{Why AWGN is Called ``White''}
+
+White light contains all visible frequencies at equal intensity. Analogously, AWGN has
+a \emph{flat} Power Spectral Density (PSD) --- it contributes equal power at every
+frequency. This property is verified in Module 4.
+
+\subsubsection{What the Simulation Demonstrates}
+
+The user adjusts the true signal $X$, bias $\beta$, noise $\sigma$, and sample count
+$N$. The left panel displays live statistics; the right panel shows (a)~the time series
+of the true vs.\ measured signal, and (b)~a histogram of the error samples. As
+$\sigma \to 0$, the histogram collapses to a delta function at $\beta$. As
+$N \to \infty$, the histogram shape converges to a bell curve --- confirming the
+Central Limit Theorem.
+
+% --------------------------------------------------
+\subsection{Module 3 --- Brownian Motion \& Random Walk}
+% --------------------------------------------------
+
+\subsubsection{The IMU Drift Problem}
+
+Inertial Measurement Units (IMUs) integrate acceleration to produce velocity, and
+integrate velocity to produce position. Even a tiny, zero-mean noise sample
+$\varepsilon(t)$ produces a \emph{cumulative} error when integrated: the error
+performs a \textbf{Random Walk} (Brownian motion) and wanders infinitely away from the
+true state over time. This is a fundamentally different failure mode from AWGN.
+
+\subsubsection{Mathematical Model}
+
+The discrete random-walk bias evolves as:
+
+\begin{equation}
+  b(t) = b(t-1) + \delta(t), \qquad \delta(t) \sim \mathcal{N}(0, \sigma_d^2)
+  \label{eq:randomwalk}
+\end{equation}
+
+The total sensor measurement at time $t$ is:
+
+\begin{equation}
+  Z(t) = X + b(t) + \varepsilon(t)
+\end{equation}
+
+where $b(t)$ is the \emph{accumulated} drift and $\varepsilon(t)$ is the high-frequency
+jitter. Because each step $\delta(t)$ is added cumulatively, the variance of $b(t)$
+grows linearly with time:
+
+\begin{equation}
+  \text{Var}[b(t)] = t \cdot \sigma_d^2
+\end{equation}
+
+This unbounded growth makes the random walk a \emph{non-stationary} process.
+
+\subsubsection{What the Simulation Demonstrates}
+
+When the jitter is zeroed and drift severity is increased, the rose-coloured sensor
+line wanders further from the green true-signal line with every time step. This
+visually proves that IMUs used in standalone mode (without GPS or magnetometer
+correction) will eventually lose spatial coherence --- motivating the sensor fusion
+approach in Module 7.
+
+% --------------------------------------------------
+\subsection{Module 4 --- DSP Signal Diagnostics}
+% --------------------------------------------------
+
+\subsubsection{Purpose}
+
+Before applying a filter, an engineer must \emph{diagnose} the noise: What statistical
+process generated it? Is it stationary? What is the pre-filter Signal-to-Noise Ratio?
+This module automates that diagnosis.
+
+\subsubsection{Signal-to-Noise Ratio (SNR)}
+
+\begin{equation}
+  \text{SNR} = 10\log_{10}\!\left(\frac{P_\text{signal}}{P_\text{noise}}\right) \quad \text{[dB]}
+  \label{eq:snr}
+\end{equation}
+
+where $P = \frac{1}{N}\sum x_i^2$ is the mean power. A higher SNR means more of the
+measured energy is true signal; a lower SNR means the noise is dominant.
+
+\subsubsection{Autocorrelation Function}
+
+The autocorrelation at lag $k$ measures how similar a signal is to a time-shifted
+version of itself:
+
+\begin{equation}
+  R_{xx}(k) = \frac{1}{N}\sum_{i=0}^{N-k-1} x(i)\, x(i+k)
+  \label{eq:autocorr}
+\end{equation}
+
+For white noise, $R_{xx}(k) = 0$ for all $k \neq 0$ (no memory). For coloured
+(Markov) noise, $R_{xx}(k)$ decays exponentially. For a random walk (Wiener process),
+$R_{xx}(k)$ decays extremely slowly, retaining high correlation at large lags.
+
+\subsubsection{Power Spectral Density (PSD)}
+
+The PSD is computed via the Discrete Fourier Transform (DFT):
+
+\begin{equation}
+  S(k) = \frac{1}{N}\left|\sum_{n=0}^{N-1} x(n)\, e^{-j2\pi kn/N}\right|^2
+  \label{eq:psd}
+\end{equation}
+
+White noise: flat PSD. Coloured noise: sloping PSD. The implementation uses
+a direct $O(N^2)$ DFT (sufficient for pedagogical $N \leq 200$).
+
+\subsubsection{Wide-Sense Stationarity (WSS) Test}
+
+A process is Wide-Sense Stationary if its mean and variance are constant over time.
+The implementation splits the data in half and compares the two halves:
+
+\begin{align}
+  \Delta\mu &= |\mu_1 - \mu_2| < \sqrt{\max(\sigma_1^2, \sigma_2^2)} \times 0.8 \\
+  r_\sigma  &= \frac{\max(\sigma_1^2, \sigma_2^2)}{\min(\sigma_1^2, \sigma_2^2)} < 3.0
+\end{align}
+
+Both conditions must hold for the WSS flag to pass. The thresholds are
+\emph{scale-invariant} (derived from the data's own variance), avoiding the hardcoded
+numerical threshold that would fail on differently-scaled inputs.
+
+\subsubsection{Statistical Moments \& Process Identification}
+
+Higher statistical moments characterise the shape of the probability distribution:
+
+\begin{align}
+  \text{Skewness:} \quad & \gamma_1 = \frac{1}{N\sigma^3}\sum(x_i - \mu)^3 \\
+  \text{Kurtosis:} \quad & \gamma_2 = \frac{1}{N\sigma^4}\sum(x_i - \mu)^4
+\end{align}
+
+A Gaussian distribution has $\gamma_1 \approx 0$ and $\gamma_2 \approx 3$.
+Deviations identify different random processes. The \texttt{identifyProcess()} function
+implements the following decision tree:
+
+\begin{table}[h!]
+  \centering
+  \caption{Automated Process Classification}
+  \begin{tabular}{llll}
+    \toprule
+    \textbf{Condition} & \textbf{Classification} \\
+    \midrule
+    $\gamma_2 > 4.5$ & Poisson (Impulsive) \\
+    $R(1)/R(0) > 0.9$ \emph{and} $R(10)/R(0) > 0.6$ & Wiener (Brownian Drift) \\
+    $R(1)/R(0) > 0.3$ & Markov (Coloured Noise) \\
+    Otherwise & Gaussian (White Noise) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsubsection{Low-Pass Filter for SNR Improvement}
+
+A causal moving-average low-pass filter (LPF) of window size $W$ is applied:
+
+\begin{equation}
+  y(t) = \frac{1}{\min(t+1,\, W)}\sum_{j=0}^{\min(t, W-1)} x(t-j)
+\end{equation}
+
+The SNR improvement (in dB) after filtering is reported as a net gain metric.
+
+% --------------------------------------------------
+\subsection{Module 5 --- 1-D Discrete Kalman Filter}
+% --------------------------------------------------
+
+\subsubsection{Motivation}
+
+The Kalman filter is the \emph{optimal} linear estimator for Gaussian noise in the
+least-squares sense. It outperforms a fixed moving average because it dynamically
+allocates trust between its own prediction model and the incoming measurement,
+weighted by their respective uncertainties.
+
+\subsubsection{State-Space Model}
+
+For a static (or slowly varying) 1-D scalar state $x_t$:
+
+\begin{align}
+  \text{Process model:}     \quad & x_t = x_{t-1} + w_t, \quad w_t \sim \mathcal{N}(0, Q) \\
+  \text{Measurement model:} \quad & z_t = x_t + v_t,     \quad v_t \sim \mathcal{N}(0, R)
+\end{align}
+
+$Q$ is the \emph{process noise variance} (how much the true state can change between
+steps) and $R$ is the \emph{measurement noise variance} (how noisy the sensor is).
+
+\subsubsection{Algorithm}
+
+The filter alternates between two steps at each time $t$:
+
+\textbf{Prediction:}
+\begin{align}
+  \hat{x}_{t|t-1} &= \hat{x}_{t-1|t-1} \\
+  P_{t|t-1}       &= P_{t-1|t-1} + Q
+\end{align}
+
+\textbf{Update:}
+\begin{align}
+  K_t             &= \frac{P_{t|t-1}}{P_{t|t-1} + R}              && \text{(Kalman Gain)} \\
+  \hat{x}_{t|t}   &= \hat{x}_{t|t-1} + K_t(z_t - \hat{x}_{t|t-1}) && \text{(Updated Estimate)} \\
+  P_{t|t}         &= (1 - K_t)\, P_{t|t-1}                         && \text{(Updated Covariance)}
+\end{align}
+
+\textbf{Interpretation of the Kalman Gain $K_t$:}
+\begin{itemize}
+  \item $K_t \to 1$: Trust the raw measurement almost entirely (large $R$ relative
+        to $P$ means prior is uncertain).
+  \item $K_t \to 0$: Trust the prediction almost entirely (small $R$ means sensor
+        is very accurate).
+\end{itemize}
+
+\subsubsection{What the Simulation Demonstrates}
+
+The user uploads a CSV file of raw sensor readings. The $R$ slider (``Sensor
+Distrust'') is tuned live. Increasing $R$ produces heavy smoothing; decreasing $R$
+allows the filter to track the raw data more aggressively. The visualisation overlays
+the raw signal and the filtered estimate, allowing the user to tune $R$ until they
+achieve the desired balance between noise rejection and signal tracking.
+
+% --------------------------------------------------
+\subsection{Module 6 --- LMS Adaptive Filter}
+% --------------------------------------------------
+
+\subsubsection{Motivation: The Failure of Static Filters}
+
+The Kalman filter requires $Q$ and $R$ to be set before deployment. If the noise
+profile of the environment changes (e.g.\ a new interference source appears), a
+static filter degrades without any self-correction mechanism. An \emph{adaptive}
+filter learns the statistics of the noise online and continuously updates its
+own coefficients.
+
+\subsubsection{FIR Filter Structure}
+
+A Finite Impulse Response (FIR) filter of order $M$ computes its output as:
+
+\begin{equation}
+  \hat{y}(t) = \sum_{i=0}^{M-1} w_i \cdot x(t-i)
+  \label{eq:fir}
+\end{equation}
+
+where $\mathbf{w} = [w_0, w_1, \ldots, w_{M-1}]$ is the weight vector and
+$[x(t), x(t-1), \ldots, x(t-M+1)]$ is the delay buffer of recent noisy inputs.
+
+\subsubsection{Least Mean Squares (LMS) Algorithm}
+
+The LMS algorithm minimises the mean squared error between the filter output
+$\hat{y}(t)$ and the desired signal $d(t)$ (the true sine wave) using
+\emph{stochastic gradient descent}:
+
+\begin{align}
+  e(t)     &= d(t) - \hat{y}(t)                           && \text{(Instantaneous Error)} \\
+  w_i(t+1) &= w_i(t) + 2\mu \cdot e(t) \cdot x(t-i)      && \text{(Weight Update)}
+  \label{eq:lms}
+\end{align}
+
+where $\mu > 0$ is the \textbf{learning rate}. The gradient-descent step size is
+$2\mu e(t) x(t-i)$, derived from $-\nabla_{\mathbf{w}} \mathbb{E}[e^2(t)]$.
+
+\subsubsection{Stability Condition}
+
+The LMS algorithm converges if and only if:
+
+\begin{equation}
+  0 < \mu < \frac{1}{M \cdot P_x}
+\end{equation}
+
+where $P_x$ is the input signal power and $M$ is the filter order. Setting $\mu$ too
+large causes the algorithm to diverge catastrophically (visible in the simulation as
+the filtered output exploding to $\pm\infty$).
+
+\subsubsection{What the Simulation Demonstrates}
+
+At $t = 0$ all weights are zero, so the filter output is a flat line. Over time the
+cyan filtered line ``learns'' to extract the underlying $5\sin(0.1t)$ sine wave from
+the red noisy input. The user can push $\mu$ above the stability limit to observe the
+mathematical chaos --- a visceral demonstration of why the stability bound matters.
+
+% --------------------------------------------------
+\subsection{Module 7 --- Variance-Weighted Sensor Fusion}
+% --------------------------------------------------
+
+\subsubsection{The Hardware Solution to Noise}
+
+When a single sensor cannot be trusted, the solution is to use multiple sensors. If
+two sensors $A$ and $B$ independently observe the same true quantity $X$ with
+Gaussian noise:
+
+\begin{align}
+  z_A = X + \varepsilon_A, \quad \varepsilon_A &\sim \mathcal{N}(0, \sigma_A^2) \\
+  z_B = X + \varepsilon_B, \quad \varepsilon_B &\sim \mathcal{N}(0, \sigma_B^2)
+\end{align}
+
+\subsubsection{Optimal Fusion Formula}
+
+The minimum-variance (statistically optimal) fused estimate is the
+\emph{variance-weighted average}:
+
+\begin{equation}
+  \hat{X} = \frac{z_A \cdot \sigma_B^2 + z_B \cdot \sigma_A^2}{\sigma_A^2 + \sigma_B^2}
+  \label{eq:fusion}
+\end{equation}
+
+This is exactly the \textbf{Kalman update step} in scalar form. The fused variance is:
+
+\begin{equation}
+  \sigma_\text{fused}^2 = \frac{\sigma_A^2 \cdot \sigma_B^2}{\sigma_A^2 + \sigma_B^2}
+\end{equation}
+
+which is always smaller than both $\sigma_A^2$ and $\sigma_B^2$ --- the fusion is
+mathematically guaranteed to be at least as good as the best individual sensor.
+
+\subsubsection{Geometric Interpretation}
+
+A noisy sensor with high variance $\sigma^2$ receives low weight in the fusion
+(the denominator term $\sigma_A^2$ in the numerator is small when $\sigma_A^2$ is
+small). The result is that the fused estimate automatically ``hugs'' the more reliable
+sensor, dynamically adjusted whenever the user changes either $\sigma$.
+
+\subsubsection{What the Simulation Demonstrates}
+
+Three lines are plotted: Sensor A (amber), Sensor B (blue), and the fused estimate
+(purple). As the user increases $\sigma_A$ (making sensor A noisier), the purple
+fused line migrates toward sensor B. When both are equal, the purple line bisects the
+two. The simulation also accepts CSV uploads for two real sensor streams, fusing them
+with user-specified noise parameters.
+
+% ====================================================
+\section{Implementation Details}
+% ====================================================
+
+\subsection{Core Random Number Generation}
+
+\texttt{stochasticEngine.ts} implements the Box-Muller transform and exposes
+\texttt{generateGaussian($\mu$, $\sigma$)} as the shared building block for all other
+engines. Every noise source in the platform flows through this single function,
+guaranteeing numerical consistency across modules.
+
+\subsection{CSV Data Pipeline}
+
+All modules that accept real-world data use a shared regex-based CSV parser that
+extracts the first numeric token from each non-empty line:
+\begin{verbatim}
+  const match = line.match(/-?\d+(\.\d+)?/);
+\end{verbatim}
+This approach handles CSVs with arbitrary headers, multi-column data (ignoring extra
+columns), and both LF and CRLF line endings.
+
+\subsection{Reactive Simulation Architecture}
+
+Each simulation component uses a \texttt{useEffect} hook whose dependency array
+includes all parameter state variables. Any slider adjustment immediately triggers
+a fresh simulation run and re-renders all charts without user intervention, providing
+a ``live'' laboratory feel.
+
+\subsection{WSS Threshold Upgrade}
+
+A known engineering pitfall of stationary tests is the use of absolute, hardcoded
+thresholds that fail on differently-scaled data. The platform uses a
+scale-invariant mean-difference threshold derived from the signal's own standard
+deviation:
+\begin{equation}
+  \theta_\mu = \sqrt{\max(\sigma_1^2, \sigma_2^2)} \times 0.8
+\end{equation}
+This passes correctly for unit-amplitude noise and equally for signals scaled by
+$10^6$, unlike a fixed absolute threshold.
+
+% ====================================================
+\section{Results \& Observations}
+% ====================================================
+
+\subsection{AWGN Module}
+
+Setting bias $\beta = 0$ and varying $\sigma$ demonstrates that:
+\begin{itemize}
+  \item The mean error $\mu_e \approx 0$ for all $\sigma$ (unbiased estimator).
+  \item The variance $\sigma_e^2$ tracks $\sigma^2$ within Monte Carlo sampling error.
+  \item The RMSE $\approx \sigma$ when bias is zero, confirming $\text{RMSE}^2 = \text{Var} + \text{Bias}^2$.
+\end{itemize}
+
+\subsection{Brownian Drift Module}
+
+With white noise at zero:
+\begin{itemize}
+  \item The sensor error grows without bound, consistent with
+        $\text{Var}[b(t)] = t \cdot \sigma_d^2$.
+  \item Doubling $\sigma_d$ approximately doubles the visible spread at any fixed $t$.
+  \item The WSS test in Module 4 correctly returns \textbf{FAIL} for drifting data,
+        since the variance of the second half is much larger than the first.
+\end{itemize}
+
+\subsection{Kalman Filter Module}
+
+On synthetic Gaussian data:
+\begin{itemize}
+  \item With $R$ small (trusting the sensor), the filtered output tracks the raw
+        signal closely with minimal smoothing.
+  \item With $R$ large, the filtered output is heavily smoothed, converging toward the
+        prior model (a constant).
+  \item The optimal $R$ is that which minimises the residual RMS against the known
+        ground truth.
+\end{itemize}
+
+\subsection{LMS Adaptive Filter Module}
+
+\begin{itemize}
+  \item At low $\mu$ (e.g.\ 0.001), the filter converges slowly but stably.
+  \item At the recommended $\mu = 0.01$, the cyan line visually extracts the sine
+        wave within approximately 50 samples.
+  \item Pushing $\mu > 0.05$ causes visible numerical instability; $\mu > 0.1$
+        produces divergence to $\pm\infty$, confirming the theoretical stability bound.
+\end{itemize}
+
+\subsection{Sensor Fusion Module}
+
+\begin{itemize}
+  \item The fused variance is always lower than the worse sensor, as proven by
+        Equation \eqref{eq:fusion}.
+  \item When $\sigma_A = \sigma_B$, the fused line runs exactly through the average
+        of the two sensors.
+  \item The fused line ``clings'' to whichever sensor has the lower $\sigma$, which
+        is the mathematically optimal behaviour.
+\end{itemize}
+
+% ====================================================
+\section{Conclusion}
+% ====================================================
+
+This project successfully implements a complete stochastic signal-processing pipeline
+from first principles, covering:
+
+\begin{enumerate}[label=\arabic*.]
+  \item The mathematical transformation of uniform machine randomness into
+        physically-meaningful Gaussian distributions (Box-Muller).
+  \item The modelling of AWGN as the fundamental corruption mechanism in all sensors.
+  \item The modelling of Brownian random-walk drift as a cumulative, non-stationary
+        failure mode in integrating sensors such as IMUs.
+  \item A full DSP diagnostics suite computing SNR, PSD, autocorrelation, the WSS
+        test, and higher statistical moments for automatic process classification.
+  \item A 1-D discrete Kalman filter that demonstrates the predict-update cycle and
+        the effect of the process-noise/measurement-noise ratio on estimation quality.
+  \item An LMS adaptive FIR filter that demonstrates online stochastic gradient descent
+        and the critical importance of the learning-rate stability condition.
+  \item Variance-weighted sensor fusion implementing the core Kalman update logic for
+        multi-sensor environments.
+\end{enumerate}
+
+The interactive web platform makes the abstract mathematics of random processes
+immediately observable and experimentally verifiable, serving as both a pedagogical
+tool and a practical engineering sandbox.
+
+\vspace{2em}
+
+\begin{tcolorbox}[colback=accent!5!white, colframe=accent, title=\textbf{Key Insight}]
+  Every module in this pipeline answers the same engineering question at a different
+  level of abstraction: \emph{``Given a corrupted measurement, how do we recover the
+  truth?''} Distribution math gives us the tools; AWGN and drift models describe the
+  enemy; diagnostics identifies which enemy we face; and the Kalman filter, LMS, and
+  sensor fusion are three progressively more powerful weapons to fight it.
+\end{tcolorbox}
+
+% ====================================================
+\section*{References}
+% ====================================================
+\addcontentsline{toc}{section}{References}
+
+\begin{enumerate}[label={[\arabic*]}]
+  \item Kalman, R. E., ``A New Approach to Linear Filtering and Prediction Problems,''
+        \textit{Transactions of the ASME -- Journal of Basic Engineering},
+        vol.~82, no.~1, pp.~35--45, 1960.
+
+  \item Widrow, B. and Hoff, M. E., ``Adaptive Switching Circuits,''
+        \textit{1960 IRE WESCON Convention Record}, pp.~96--104, 1960.
+
+  \item Box, G. E. P. and Muller, M. E., ``A Note on the Generation of Random Normal
+        Deviates,'' \textit{The Annals of Mathematical Statistics},
+        vol.~29, no.~2, pp.~610--611, 1958.
+
+  \item Papoulis, A. and Pillai, S. U., \textit{Probability, Random Variables, and
+        Stochastic Processes}, 4th ed.\ McGraw-Hill, 2002.
+
+  \item Haykin, S., \textit{Adaptive Filter Theory}, 4th ed.\ Prentice Hall, 2002.
+
+  \item Welch, G. and Bishop, G., ``An Introduction to the Kalman Filter,''
+        Technical Report TR 95-041, University of North Carolina, 2006.
+\end{enumerate}
+
+\end{document}

@@ -47,23 +47,44 @@ export function calculatePSD(data: number[]) {
 }
 
 export function checkWSS(data: number[]): boolean {
-  if (data.length < 10) return false;
-  const half = Math.floor(data.length / 2);
-  const p1 = data.slice(0, half);
-  const p2 = data.slice(half);
-
-  const mean1 = p1.reduce((a, b) => a + b, 0) / half;
-  const mean2 = p2.reduce((a, b) => a + b, 0) / half;
+  if (data.length < 15) return false;
   
-  const var1 = p1.reduce((a, b) => a + Math.pow(b - mean1, 2), 0) / half;
-  const var2 = p2.reduce((a, b) => a + Math.pow(b - mean2, 2), 0) / half;
+  // Split the data into 3 chunks (Beginning, Middle, End)
+  const third = Math.floor(data.length / 3);
+  const p1 = data.slice(0, third);
+  const p2 = data.slice(third, 2 * third);
+  const p3 = data.slice(2 * third);
 
-  const meanDiff = Math.abs(mean1 - mean2);
-  const varRatio = Math.max(var1, var2) / (Math.min(var1, var2) || 0.0001);
+  // Helper function to calculate mean and variance for a chunk
+  const calcStats = (arr: number[]) => {
+    const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+    const variance = arr.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / arr.length;
+    return { mean, variance };
+  };
 
-  // UPGRADE: Scale-invariant WSS threshold instead of a fixed hardcoded number
-  const threshold = Math.sqrt(Math.max(var1, var2)) * 0.8;
-  return meanDiff < threshold && varRatio < 3.0;
+  const s1 = calcStats(p1);
+  const s2 = calcStats(p2);
+  const s3 = calcStats(p3);
+
+  // Find the maximum deviations across the 3 chunks
+  const maxMean = Math.max(s1.mean, s2.mean, s3.mean);
+  const minMean = Math.min(s1.mean, s2.mean, s3.mean);
+  const maxVar = Math.max(s1.variance, s2.variance, s3.variance);
+  const minVar = Math.min(s1.variance, s2.variance, s3.variance);
+
+  const meanDiff = maxMean - minMean;
+  const varRatio = maxVar / (minVar || 0.0001);
+
+  // Calculate the overall standard deviation of the whole signal
+  const overallMean = data.reduce((a, b) => a + b, 0) / data.length;
+  const overallVar = data.reduce((a, b) => a + Math.pow(b - overallMean, 2), 0) / data.length;
+  const overallStdDev = Math.sqrt(overallVar);
+
+  // For a process to be WSS, the means between chunks cannot shift by more than 
+  // half a standard deviation, and the variance cannot double.
+  const isStationary = meanDiff < (overallStdDev * 0.5) && varRatio < 2.0;
+
+  return isStationary;
 }
 
 export function applyLowPassFilter(data: number[], windowSize: number = 5): number[] {
@@ -118,11 +139,14 @@ export function runCustomAnalysis(rawData: number[], filterWindow: number) {
   }
 
   const autocorr = calculateAutocorrelation(rawData, Math.min(30, Math.floor(rawData.length / 2)));
-  const isWSSFlag = checkWSS(rawData);
+  let isWSSFlag = checkWSS(rawData);
   const momentsData = calculateMoments(rawData);
   
   // Use the new smart identifier
   momentsData.process = identifyProcess(momentsData.kurtosis, isWSSFlag, autocorr);
+if (momentsData.process.includes("Poisson")) {
+    isWSSFlag = false;
+  }
 
   return {
     timeSeries,
@@ -182,13 +206,15 @@ export function runSignalAnalysis(noiseLevel: number, filterWindow: number, isCo
 
   //PROCESS IDENTIFICATION 
   const autocorr = calculateAutocorrelation(noiseOnly, 30);
-  const isWSSFlag = checkWSS(noiseOnly);
+  let isWSSFlag = checkWSS(noiseOnly);
   // Important: We analyze 'noiseOnly', NOT 'residualNoise'
   const momentsData = calculateMoments(noiseOnly); 
   
   // Use the new smart identifier to check for Markov, Wiener, or Poisson
   momentsData.process = identifyProcess(momentsData.kurtosis, isWSSFlag, autocorr);
-
+if (momentsData.process.includes("Poisson")) {
+    isWSSFlag = false;
+  }
   return {
     timeSeries,
     rawSNR: Math.round(rawSNR * 100) / 100,
